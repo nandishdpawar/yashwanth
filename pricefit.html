@@ -1,0 +1,395 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>PriceFit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working sheet. Sticky top bar with tabs, a model switcher under it, then a single column of panels. Matrices and tables scroll inside their own frames. */
+:root{
+  --bg:#f1f4f8; --panel:#ffffff; --ink:#12202f; --muted:#566678; --line:#d3dbe5; --soft:#e7eefb;
+  --accent:#1c5bcc; --accent-ink:#ffffff; --warn:#b4530a; --good:#13773a;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d141c; --panel:#141d28; --ink:#e5ebf3; --muted:#92a1b3; --line:#263343; --soft:#1a2a45;
+  --accent:#74a8ff; --accent-ink:#0b1320; --warn:#f2a65e; --good:#62d48b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d141c; --panel:#141d28; --ink:#e5ebf3; --muted:#92a1b3; --line:#263343; --soft:#1a2a45;
+  --accent:#74a8ff; --accent-ink:#0b1320; --warn:#f2a65e; --good:#62d48b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-top:14px}
+.brand b{font:700 22px var(--display);letter-spacing:-.01em}
+.brand span{color:var(--muted);font-size:13px}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin;margin-top:8px}
+nav a{white-space:nowrap;padding:9px 12px;color:var(--muted);text-decoration:none;font-weight:500;font-size:14px;border-bottom:2px solid transparent}
+nav a:hover{color:var(--ink)}
+nav a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{display:flex;flex-direction:column;gap:20px;padding-top:22px}
+h1{font:700 30px/1.15 var(--display);letter-spacing:-.015em;margin:0;text-wrap:balance}
+h2{font:600 19px/1.25 var(--display);margin:0 0 8px;text-wrap:balance}
+h3{font:600 15px var(--body);margin:0 0 6px}
+p{margin:0 0 10px;max-width:70ch}
+.lead{color:var(--muted);font-size:16px;max-width:68ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0}
+.panel.flat{background:transparent;border:0;padding:0}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.grid>*{min-width:0}
+.mono,td.n,th.n,.mat td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+td.n,th.n{text-align:right}
+tr.best td{background:var(--soft)}
+.mat table{width:auto}
+.mat{position:relative;padding:4px 14px;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:6px;display:inline-block;max-width:100%;overflow:auto}
+.mat td{border:0;padding:3px 10px;text-align:right}
+.tag{display:inline-block;font:500 12px var(--mono);padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--accent)}
+.tag.ok{color:var(--good)} .tag.warn{color:var(--warn)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:500 13.5px var(--body);padding:7px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.stage{display:grid;grid-template-columns:auto 1fr;gap:4px 14px}
+.stage dt{font:600 12px var(--mono);color:var(--accent);padding-top:3px}
+.stage dd{margin:0 0 8px}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--panel)}
+.kpi small{display:block;color:var(--muted);font-size:12px}
+.kpi b{font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+.eq{font-family:var(--mono);background:var(--soft);padding:8px 12px;border-radius:6px;display:block;overflow-x:auto;margin:6px 0 10px;font-size:13.5px}
+input[type=number]{font:13.5px var(--mono);width:84px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);text-align:right}
+.form{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:12px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+button.ghost{font:500 13px var(--body);padding:6px 12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;cursor:pointer}
+.note{color:var(--muted);font-size:13px}
+.err{border:1px solid var(--warn);color:var(--warn);padding:10px 14px;border-radius:8px}
+svg.chart{width:100%;height:auto;display:block}
+svg .ax{stroke:var(--line);stroke-width:1;fill:none}
+svg .gr{stroke:var(--line);stroke-width:1;opacity:.55}
+svg text{fill:var(--muted);font:11px var(--mono)}
+svg text.t{fill:var(--ink)}
+svg .pt{fill:var(--accent)} svg .ln{stroke:var(--warn);stroke-width:1.6;fill:none}
+svg .stem{stroke:var(--accent);stroke-width:1.6} svg .neg{stroke:var(--warn)}
+svg .b1{fill:var(--accent)} svg .b2{fill:var(--warn)}
+.legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+@media (max-width:520px){h1{font-size:25px}.panel{padding:14px}}
+@media (prefers-reduced-motion:no-preference){nav a{transition:color .15s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>PriceFit</b><span>House price least-squares model comparison · MAT2303 mini project</span></div>
+    <nav id="nav" aria-label="Sections"></nav>
+  </header>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ---------- linear algebra from first principles ---------- */
+const T=A=>A[0].map((_,j)=>A.map(r=>r[j]));
+const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0);
+const mm=(A,B)=>{const Bt=T(B);return A.map(r=>Bt.map(c=>dot(r,c)))};
+const mv=(A,x)=>A.map(r=>dot(r,x));
+const nrm=v=>Math.sqrt(dot(v,v));
+function gaussJordan(A,B){            // solve A X = B, partial pivoting
+  const n=A.length,M=A.map((r,i)=>[...r,...B[i]]);
+  const scale=Math.max(...A.flat().map(Math.abs));
+  for(let c=0;c<n;c++){
+    let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    if(Math.abs(M[p][c])<1e-12*scale)throw new Error('The matrix XᵀX is singular: two columns of the design matrix are dependent.');
+    [M[c],M[p]]=[M[p],M[c]];
+    const pv=M[c][c];for(let k=0;k<M[c].length;k++)M[c][k]/=pv;
+    for(let r=0;r<n;r++)if(r!==c){const f=M[r][c];if(f)for(let k=0;k<M[r].length;k++)M[r][k]-=f*M[c][k];}
+  }
+  return M.map(r=>r.slice(n));
+}
+const solve=(A,b)=>gaussJordan(A,b.map(v=>[v])).map(r=>r[0]);
+const inverse=A=>gaussJordan(A,A.map((_,i)=>A.map((_,j)=>i===j?1:0)));
+function qrSolve(X,y){                // modified Gram-Schmidt, then back substitution on R b = Qᵀy
+  const p=X[0].length,Q=[],R=Array.from({length:p},()=>Array(p).fill(0));
+  T(X).forEach((col,j)=>{let v=col.slice();
+    for(let i=0;i<j;i++){R[i][j]=dot(Q[i],v);v=v.map((x,k)=>x-R[i][j]*Q[i][k]);}
+    R[j][j]=nrm(v);Q.push(v.map(x=>x/R[j][j]));});
+  const q=Q.map(c=>dot(c,y)),b=Array(p).fill(0);
+  for(let i=p-1;i>=0;i--){let s=q[i];for(let j=i+1;j<p;j++)s-=R[i][j]*b[j];b[i]=s/R[i][i];}
+  return b;
+}
+function jacobiEig(S){                // eigenvalues of a symmetric matrix
+  const n=S.length;let A=S.map(r=>r.slice());const fro=A.flat().reduce((s,v)=>s+v*v,0);
+  for(let sw=0;sw<100;sw++){
+    let off=0;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)off+=A[i][j]**2;
+    if(off<=1e-28*fro)break;
+    for(let p=0;p<n;p++)for(let q=p+1;q<n;q++){
+      if(Math.abs(A[p][q])<1e-300)continue;
+      const th=(A[q][q]-A[p][p])/(2*A[p][q]);
+      const t=(th>=0?1:-1)/(Math.abs(th)+Math.sqrt(th*th+1)),c=1/Math.sqrt(t*t+1),s=t*c;
+      for(let k=0;k<n;k++){const a=A[k][p],b=A[k][q];A[k][p]=c*a-s*b;A[k][q]=s*a+c*b;}
+      for(let k=0;k<n;k++){const a=A[p][k],b=A[q][k];A[p][k]=c*a-s*b;A[q][k]=s*a+c*b;}
+    }
+  }
+  return A.map((r,i)=>r[i]);
+}
+
+/* ---------- data and models ---------- */
+const INIT=[[1800,4,13,6,90],[900,1,7,16,24],[1000,1,13,10,31],[1100,3,10,16,38],[2300,2,7,12,109],[1600,3,25,14,54],[2600,4,1,3,157],[800,1,3,11,32],[1700,1,5,10,82],[1900,3,25,16,66],[2400,2,18,8,114],[2100,2,23,12,90],[2700,4,6,3,153],[2200,4,19,8,108],[1200,2,10,7,53],[2000,4,13,4,113],[1300,3,1,15,60],[1500,3,16,8,65],[1400,2,21,18,37],[2500,4,17,11,125]];
+let data=INIT.map(r=>r.slice());
+const MODELS=[
+  {id:'M1',name:'Area only',terms:['1','area'],row:(a,b,g,d)=>[1,a]},
+  {id:'M2',name:'Area + bedrooms',terms:['1','area','bedrooms'],row:(a,b,g,d)=>[1,a,b]},
+  {id:'M3',name:'Area + bedrooms + age + distance',terms:['1','area','bedrooms','age','distance'],row:(a,b,g,d)=>[1,a,b,g,d]},
+  {id:'M4',name:'M3 + area²',terms:['1','area','bedrooms','age','distance','area²'],row:(a,b,g,d)=>[1,a,b,g,d,a*a]},
+];
+const feat=h=>[h[0]/100,h[1],h[2],h[3]];       // area in units of 100 sq ft
+function analyze(M){
+  const X=data.map(h=>M.row(...feat(h))),y=data.map(h=>h[4]),n=y.length,p=X[0].length,Xt=T(X);
+  const XtX=mm(Xt,X),Xty=mv(Xt,y),beta=solve(XtX,Xty),betaQR=qrSolve(X,y);
+  const yh=mv(X,beta),r=y.map((v,i)=>v-yh[i]);
+  const inv=inverse(XtX),H=mm(mm(X,inv),Xt),h=H.map((row,i)=>row[i]);
+  const HH=mm(H,H);let idem=0;H.forEach((row,i)=>row.forEach((v,j)=>idem=Math.max(idem,Math.abs(HH[i][j]-v))));
+  const loo=r.map((e,i)=>e/(1-h[i]));
+  const sse=dot(r,r),mean=y.reduce((s,v)=>s+v,0)/n,sst=y.reduce((s,v)=>s+(v-mean)**2,0);
+  const R2=1-sse/sst,adj=1-(1-R2)*(n-1)/(n-p),ev=jacobiEig(XtX);
+  return {M,X,y,n,p,XtX,Xty,beta,betaQR,yh,r,h,loo,idem,
+    qrdiff:Math.max(...beta.map((b,i)=>Math.abs(b-betaQR[i]))),
+    orth:Math.max(...mv(Xt,r).map(Math.abs)),Xtr:mv(Xt,r),
+    yy:dot(y,y),yhyh:dot(yh,yh),rr:sse,trace:h.reduce((s,v)=>s+v,0),
+    l1:r.reduce((s,v)=>s+Math.abs(v),0),l2:Math.sqrt(sse),linf:Math.max(...r.map(Math.abs)),
+    rmse:Math.sqrt(sse/n),mae:r.reduce((s,v)=>s+Math.abs(v),0)/n,R2,adj,sigma:Math.sqrt(sse/(n-p)),
+    looRmse:Math.sqrt(loo.reduce((s,v)=>s+v*v,0)/n),cond:Math.sqrt(Math.max(...ev)/Math.min(...ev)),sst};
+}
+let cache=null,error=null,sel='M3';
+function compute(){try{cache=MODELS.map(analyze);error=null}catch(e){cache=null;error=e.message}}
+
+/* ---------- formatting ---------- */
+const f=(x,d=4)=>Number(x).toFixed(d);
+const sci=x=>Number(x).toExponential(1);
+const num=(x,d=2)=>Number(x).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+function matHTML(rows,d=2,heads){return `<div class="mat"><table>${heads?`<thead><tr>${heads.map(h=>`<th class="n">${h}</th>`).join('')}</tr></thead>`:''}<tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${typeof v==='number'?f(v,d):v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+function ticks(lo,hi,k=5){const span=hi-lo||1,raw=span/k,m=10**Math.floor(Math.log10(raw)),s=[1,2,2.5,5,10].find(v=>v*m>=raw)*m;const out=[];for(let v=Math.ceil(lo/s)*s;v<=hi+1e-9;v+=s)out.push(+v.toFixed(10));return out}
+
+/* ---------- svg charts ---------- */
+function frame(W,H,m){return {W,H,m,iw:W-m.l-m.r,ih:H-m.t-m.b}}
+function axes(F,xs,ys,xl,yl,sx,sy){
+  let s='';
+  ys.forEach(v=>{s+=`<line class="gr" x1="${F.m.l}" x2="${F.m.l+F.iw}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${F.m.l-6}" y="${sy(v)+4}" text-anchor="end">${v}</text>`});
+  xs.forEach(v=>{s+=`<text x="${sx(v)}" y="${F.m.t+F.ih+16}" text-anchor="middle">${v}</text>`});
+  s+=`<line class="ax" x1="${F.m.l}" x2="${F.m.l+F.iw}" y1="${F.m.t+F.ih}" y2="${F.m.t+F.ih}"/><line class="ax" x1="${F.m.l}" x2="${F.m.l}" y1="${F.m.t}" y2="${F.m.t+F.ih}"/>`;
+  s+=`<text x="${F.m.l+F.iw/2}" y="${F.H-6}" text-anchor="middle">${xl}</text><text transform="translate(12 ${F.m.t+F.ih/2}) rotate(-90)" text-anchor="middle">${yl}</text>`;
+  return s;
+}
+function scatter(pts,xl,yl,opt={}){
+  const F=frame(560,340,{l:48,r:16,t:12,b:40});
+  const xsAll=pts.map(p=>p[0]),ysAll=pts.map(p=>p[1]);
+  let x0=Math.min(...xsAll),x1=Math.max(...xsAll),y0=Math.min(...ysAll),y1=Math.max(...ysAll);
+  if(opt.equal){x0=y0=Math.min(x0,y0);x1=y1=Math.max(x1,y1)}
+  const px=(x1-x0)*.05||1,py=(y1-y0)*.05||1;x0-=px;x1+=px;y0-=py;y1+=py;
+  const sx=v=>F.m.l+(v-x0)/(x1-x0)*F.iw,sy=v=>F.m.t+F.ih-(v-y0)/(y1-y0)*F.ih;
+  let s=axes(F,ticks(x0,x1),ticks(y0,y1),xl,yl,sx,sy);
+  if(opt.line)s+=`<line class="ln" x1="${sx(opt.line[0][0])}" y1="${sy(opt.line[0][1])}" x2="${sx(opt.line[1][0])}" y2="${sy(opt.line[1][1])}"/>`;
+  pts.forEach(p=>s+=`<circle class="pt" cx="${sx(p[0])}" cy="${sy(p[1])}" r="4"/>`);
+  return `<svg class="chart" viewBox="0 0 ${F.W} ${F.H}" role="img" aria-label="${opt.label||'Scatter chart'}">${s}</svg>`;
+}
+function stems(pts,xl,yl){
+  const F=frame(560,320,{l:48,r:16,t:12,b:40});
+  const x0=Math.min(...pts.map(p=>p[0])),x1=Math.max(...pts.map(p=>p[0]));
+  const ym=Math.max(...pts.map(p=>Math.abs(p[1])))*1.15||1;
+  const px=(x1-x0)*.05||1,sx=v=>F.m.l+(v-(x0-px))/((x1+px)-(x0-px))*F.iw,sy=v=>F.m.t+F.ih/2-v/ym*F.ih/2;
+  let s=axes(F,ticks(x0,x1),ticks(-ym,ym),xl,yl,sx,sy);
+  s+=`<line class="ax" x1="${F.m.l}" x2="${F.m.l+F.iw}" y1="${sy(0)}" y2="${sy(0)}" style="stroke:var(--ink)"/>`;
+  pts.forEach(p=>s+=`<line class="stem ${p[1]<0?'neg':''}" x1="${sx(p[0])}" x2="${sx(p[0])}" y1="${sy(0)}" y2="${sy(p[1])}"/><circle cx="${sx(p[0])}" cy="${sy(p[1])}" r="3.5" style="fill:${p[1]<0?'var(--warn)':'var(--accent)'}"/>`);
+  return `<svg class="chart" viewBox="0 0 ${F.W} ${F.H}" role="img" aria-label="Residuals against fitted price">${s}</svg>`;
+}
+function bars(res){
+  const F=frame(560,320,{l:48,r:16,t:22,b:44});
+  const mx=Math.max(...res.map(r=>Math.max(r.rmse,r.looRmse)))*1.1,ys=ticks(0,mx);
+  const sy=v=>F.m.t+F.ih-v/mx*F.ih,gw=F.iw/res.length,bw=Math.min(40,gw/3);
+  let s='';
+  ys.forEach(v=>s+=`<line class="gr" x1="${F.m.l}" x2="${F.m.l+F.iw}" y1="${sy(v)}" y2="${sy(v)}"/><text x="${F.m.l-6}" y="${sy(v)+4}" text-anchor="end">${v}</text>`);
+  s+=`<line class="ax" x1="${F.m.l}" x2="${F.m.l+F.iw}" y1="${sy(0)}" y2="${sy(0)}"/>`;
+  res.forEach((r,i)=>{const cx=F.m.l+gw*(i+.5);
+    s+=`<rect class="b1" x="${cx-bw-2}" y="${sy(r.rmse)}" width="${bw}" height="${sy(0)-sy(r.rmse)}"/><rect class="b2" x="${cx+2}" y="${sy(r.looRmse)}" width="${bw}" height="${sy(0)-sy(r.looRmse)}"/>
+    <text x="${cx-bw/2-2}" y="${sy(r.rmse)-4}" text-anchor="middle" class="t">${f(r.rmse,2)}</text><text x="${cx+bw/2+2}" y="${sy(r.looRmse)-4}" text-anchor="middle" class="t">${f(r.looRmse,2)}</text>
+    <text x="${cx}" y="${sy(0)+16}" text-anchor="middle" class="t">${r.M.id}</text>`});
+  s+=`<text transform="translate(12 ${F.m.t+F.ih/2}) rotate(-90)" text-anchor="middle">RMSE (₹ lakh)</text>`;
+  return `<svg class="chart" viewBox="0 0 ${F.W} ${F.H}" role="img" aria-label="Training and leave-one-out RMSE for each model">${s}</svg><div class="legend"><span><i style="background:var(--accent)"></i>Training RMSE</span><span><i style="background:var(--warn)"></i>Leave-one-out RMSE</span></div>`;
+}
+
+/* ---------- views ---------- */
+const TABS=[['overview','Overview'],['data','Data and matrices'],['design','Design matrices'],['solve','Least squares'],['predict','Predictions'],['residuals','Residuals'],['compare','Model comparison'],['method','Methodology']];
+const best=()=>cache.reduce((a,b)=>b.looRmse<a.looRmse?b:a);
+const cur=()=>cache.find(r=>r.M.id===sel);
+function picker(){return `<div class="seg" role="group" aria-label="Choose model">${MODELS.map(m=>`<button data-m="${m.id}" aria-pressed="${m.id===sel}">${m.id} · ${m.name}</button>`).join('')}</div>`}
+const eqn=(r)=>r.M.terms.map((t,i)=>`${i?(r.beta[i]<0?' − ':' + '):''}${f(i?Math.abs(r.beta[i]):r.beta[i],3)}${t==='1'?'':'·'+t}`).join('');
+
+const V={};
+V.overview=()=>{const b=best();return `
+<div><h1>Which house price model holds up best?</h1>
+<p class="lead">Twenty houses, four candidate models. Each model is fitted by least squares, which projects the price vector onto the span of the model's columns. The residuals then decide which model to trust.</p></div>
+<div class="kpis">
+  <div class="kpi"><small>Best model (leave-one-out)</small><b>${b.M.id}</b></div>
+  <div class="kpi"><small>Its training RMSE</small><b>${f(b.rmse,2)}</b></div>
+  <div class="kpi"><small>Its leave-one-out RMSE</small><b>${f(b.looRmse,2)}</b></div>
+  <div class="kpi"><small>Its adjusted R²</small><b>${f(b.adj,4)}</b></div>
+</div>
+<section class="panel"><h2>The computation, stage by stage</h2>
+<p class="note">Prices are in ₹ lakh, areas in square feet. The output of each stage is the input of the next.</p>
+<dl class="stage">
+ <dt>1</dt><dd><b>House data</b> → the table of 20 houses: area, bedrooms, age, distance to city centre, actual price.</dd>
+ <dt>2</dt><dd><b>Matrix formation</b> → a feature matrix F (20 × 4) and a price vector y (20 × 1).</dd>
+ <dt>3</dt><dd><b>Feature vectors</b> → each house becomes a row xᵢ; each feature becomes a column vector of length 20.</dd>
+ <dt>4</dt><dd><b>Design matrices</b> → X₁…X₄ built from F by adding a column of ones and, for M4, the column area².</dd>
+ <dt>5</dt><dd><b>Least-squares solutions</b> → solve XᵀXβ = Xᵀy by Gauss-Jordan elimination; cross-check by QR.</dd>
+ <dt>6</dt><dd><b>Predictions</b> → ŷ = Xβ, the orthogonal projection of y onto the column space of X.</dd>
+ <dt>7</dt><dd><b>Residual analysis</b> → r = y − ŷ, orthogonality Xᵀr = 0, norms ‖r‖₁, ‖r‖₂, ‖r‖∞.</dd>
+ <dt>8</dt><dd><b>Model comparison</b> → RMSE, R², adjusted R², leave-one-out error and conditioning decide the winner.</dd>
+</dl></section>
+<section class="panel"><h2>Result in one line</h2>
+<p>${b.M.id} (${b.M.name}) has the lowest leave-one-out error of the four models. Its fitted equation is</p>
+<code class="eq">price ≈ ${eqn(b)}</code>
+<p class="note">area is in units of 100 sq ft; price is in ₹ lakh. Open <a href="#compare" style="color:var(--accent)">Model comparison</a> for the full table.</p></section>`};
+
+V.data=()=>`
+<div><h1>House data and matrix formation</h1><p class="lead">Edit any value. Every matrix, coefficient and chart in the other tabs recomputes from this table.</p></div>
+<section class="panel"><div class="form"><button class="ghost" id="reset">Reset to sample data</button><span class="note" id="datastats"></span></div>
+<div class="scroll"><table id="dtab"><thead><tr><th class="n">House</th><th class="n">Area (sq ft)</th><th class="n">Bedrooms</th><th class="n">Age (yrs)</th><th class="n">Distance (km)</th><th class="n">Price (₹ lakh)</th></tr></thead><tbody>
+${data.map((h,i)=>`<tr><td class="n">${i+1}</td>${h.map((v,k)=>`<td class="n"><input type="number" step="any" min="0" aria-label="${['Area','Bedrooms','Age','Distance','Price'][k]} of house ${i+1}" data-i="${i}" data-k="${k}" value="${v}"></td>`).join('')}</tr>`).join('')}
+</tbody></table></div></section>
+<div class="grid">
+<section class="panel"><h2>Price against area</h2><div id="datachart"></div></section>
+<section class="panel"><h2>Matrices formed from the table</h2>
+<p>The 20 × 4 feature matrix F has columns area/100, bedrooms, age and distance. The price vector y is 20 × 1.</p>
+<div id="Fprev"></div><p class="note">First five rows shown. The full matrices appear in Design matrices.</p></section></div>`;
+
+V.design=()=>{const r=cur();return `
+<div><h1>Design matrices</h1><p class="lead">Each model chooses which columns of F, and which functions of them, go into X. Fitting a model means finding the combination of these columns that lies closest to y.</p></div>
+${picker()}
+<section class="panel"><h2>${r.M.id} · ${r.M.name}: X is ${r.n} × ${r.p}</h2>
+<div class="scroll">${matHTML(r.X,2,r.M.terms.map(t=>t==='area'?'area/100':t))}</div><p class="note" style="margin-top:8px">area is in units of 100 sq ft, which keeps the columns on similar scales.</p></section>
+<div class="grid">
+<section class="panel"><h2>XᵀX (${r.p} × ${r.p})</h2><div class="scroll">${matHTML(r.XtX,2,r.M.terms)}</div><p class="note" style="margin-top:8px">Symmetric by construction. It is invertible when the columns of X are independent.</p></section>
+<section class="panel"><h2>Xᵀy (${r.p} × 1)</h2>${matHTML(r.Xty.map(v=>[v]),2,['Xᵀy'])}<p class="note" style="margin-top:8px">Each entry is the dot product of one column of X with the price vector.</p></section></div>`};
+
+V.solve=()=>{const r=cur();return `
+<div><h1>Least-squares solutions</h1><p class="lead">The coefficient vector β minimises ‖y − Xβ‖₂. Setting the gradient to zero gives the normal equations, a square linear system solved here by Gauss-Jordan elimination.</p></div>
+${picker()}
+<section class="panel"><h2>${r.M.id} · normal equations</h2><code class="eq">XᵀX β = Xᵀy</code>
+<div class="scroll"><table><thead><tr><th>Term</th><th class="n">β (Gauss-Jordan)</th><th class="n">β (QR, Gram-Schmidt)</th><th class="n">Difference</th></tr></thead><tbody>
+${r.M.terms.map((t,i)=>`<tr><td>${t==='1'?'intercept':t}</td><td class="n">${f(r.beta[i],6)}</td><td class="n">${f(r.betaQR[i],6)}</td><td class="n">${sci(Math.abs(r.beta[i]-r.betaQR[i]))}</td></tr>`).join('')}</tbody></table></div>
+<p style="margin-top:10px"><span class="tag ok">Largest difference ${sci(r.qrdiff)}</span> Two independent algorithms give the same β.</p></section>
+<section class="panel"><h2>What the coefficients say</h2><code class="eq">price ≈ ${eqn(r)}</code>
+<ul style="margin:0;padding-left:20px">${r.M.terms.map((t,i)=>{if(!i)return `<li>Intercept ${f(r.beta[0],2)} lakh is the fitted price when every term is zero. It is a baseline, not a real house.</li>`;
+ const u={area:'each extra 100 sq ft',bedrooms:'each extra bedroom',age:'each extra year of age',distance:'each extra km from the centre','area²':'the curvature term (area in 100 sq ft, squared)'}[t];return `<li>${u[0].toUpperCase()+u.slice(1)} changes the price by <b class="mono">${r.beta[i]>=0?'+':'−'}${f(Math.abs(r.beta[i]),3)}</b> lakh, holding the other terms fixed.</li>`}).join('')}</ul></section>
+<section class="panel"><h2>All four models</h2><div class="scroll"><table><thead><tr><th>Term</th>${cache.map(c=>`<th class="n">${c.M.id}</th>`).join('')}</tr></thead><tbody>
+${['1','area','bedrooms','age','distance','area²'].map(t=>`<tr><td>${t==='1'?'intercept':t}</td>${cache.map(c=>{const i=c.M.terms.indexOf(t);return `<td class="n">${i<0?'–':f(c.beta[i],4)}</td>`}).join('')}</tr>`).join('')}</tbody></table></div></section>`};
+
+V.predict=()=>{const r=cur();return `
+<div><h1>Predictions</h1><p class="lead">ŷ = Xβ is the projection of the actual prices onto the span of the columns of X. The closer the points sit to the diagonal, the better the fit.</p></div>
+${picker()}
+<div class="grid">
+<section class="panel"><h2>${r.M.id}: actual against predicted</h2>${scatter(r.y.map((v,i)=>[v,r.yh[i]]),'Actual price (₹ lakh)','Predicted price (₹ lakh)',{equal:true,line:[[Math.min(...r.y,...r.yh),Math.min(...r.y,...r.yh)],[Math.max(...r.y,...r.yh),Math.max(...r.y,...r.yh)]],label:'Predicted against actual price'})}</section>
+<section class="panel"><h2>Estimate a new house</h2>
+<div class="form">
+<label>Area (sq ft)<input type="number" id="nh0" value="1800" min="0"></label>
+<label>Bedrooms<input type="number" id="nh1" value="3" min="0"></label>
+<label>Age (yrs)<input type="number" id="nh2" value="8" min="0"></label>
+<label>Distance (km)<input type="number" id="nh3" value="7" min="0"></label></div>
+<div id="newpred"></div></section></div>
+<section class="panel"><h2>${r.M.id}: predictions for the 20 houses</h2><div class="scroll"><table><thead><tr><th class="n">House</th><th class="n">Actual</th><th class="n">Predicted</th><th class="n">Residual</th><th class="n">Error %</th></tr></thead><tbody>
+${r.y.map((v,i)=>`<tr><td class="n">${i+1}</td><td class="n">${f(v,2)}</td><td class="n">${f(r.yh[i],2)}</td><td class="n">${f(r.r[i],2)}</td><td class="n">${v?f(100*r.r[i]/v,1):'–'}</td></tr>`).join('')}</tbody></table></div></section>`};
+
+V.residuals=()=>{const r=cur();return `
+<div><h1>Residual analysis</h1><p class="lead">The residual r = y − ŷ is what the model cannot explain. For a least-squares fit it must be perpendicular to every column of X. That is the defining property of an orthogonal projection.</p></div>
+${picker()}
+<div class="grid">
+<section class="panel"><h2>${r.M.id}: residuals against fitted price</h2>${stems(r.yh.map((v,i)=>[v,r.r[i]]),'Fitted price (₹ lakh)','Residual (₹ lakh)')}<p class="note">No funnel or curve is the pattern to look for. Blue stems are under-predictions, orange are over-predictions.</p></section>
+<section class="panel"><h2>Error norms of r</h2><div class="scroll"><table><tbody>
+<tr><td>‖r‖₁ (sum of absolute errors)</td><td class="n">${f(r.l1,3)}</td></tr>
+<tr><td>‖r‖₂ (least-squares objective)</td><td class="n">${f(r.l2,3)}</td></tr>
+<tr><td>‖r‖∞ (largest single error)</td><td class="n">${f(r.linf,3)}</td></tr>
+<tr><td>RMSE = ‖r‖₂ / √n</td><td class="n">${f(r.rmse,3)}</td></tr>
+<tr><td>MAE = ‖r‖₁ / n</td><td class="n">${f(r.mae,3)}</td></tr>
+<tr><td>Residual std. error σ̂ = ‖r‖₂ / √(n−p)</td><td class="n">${f(r.sigma,3)}</td></tr></tbody></table></div></section></div>
+<section class="panel"><h2>Projection checks for ${r.M.id}</h2><div class="scroll"><table><thead><tr><th>Property</th><th>What it says</th><th class="n">Value</th><th>Result</th></tr></thead><tbody>
+<tr><td>Orthogonality</td><td>max |Xᵀr| = 0</td><td class="n">${sci(r.orth)}</td><td><span class="tag ok">holds</span></td></tr>
+<tr><td>Pythagoras</td><td>‖y‖² = ‖ŷ‖² + ‖r‖²</td><td class="n">${sci(Math.abs(r.yy-r.yhyh-r.rr))}</td><td><span class="tag ok">holds</span></td></tr>
+<tr><td>Projection matrix</td><td>H = X(XᵀX)⁻¹Xᵀ is idempotent: max |H² − H|</td><td class="n">${sci(r.idem)}</td><td><span class="tag ok">holds</span></td></tr>
+<tr><td>Trace of H</td><td>tr(H) = rank = p = ${r.p}</td><td class="n">${f(r.trace,6)}</td><td><span class="tag ok">holds</span></td></tr></tbody></table></div>
+<p class="note" style="margin-top:10px">Pythagoras in numbers: ‖y‖² = ${num(r.yy)}, ‖ŷ‖² = ${num(r.yhyh)}, ‖r‖² = ${num(r.rr,3)}. Values near 1e-10 or below are floating-point rounding.</p></section>`};
+
+V.compare=()=>{const b=best();
+ const overfit=cache.filter(c=>c.rmse<b.rmse&&c.looRmse>b.looRmse);
+ return `
+<div><h1>Model comparison</h1><p class="lead">Training error alone always favours the larger model. Leave-one-out error asks how well a model predicts a house it has not seen, so it is the fairer judge.</p></div>
+<section class="panel"><h2>Comparison table</h2><div class="scroll"><table><thead><tr><th>Model</th><th class="n">p</th><th class="n">‖r‖₂</th><th class="n">‖r‖₁</th><th class="n">‖r‖∞</th><th class="n">RMSE</th><th class="n">R²</th><th class="n">Adj. R²</th><th class="n">LOO RMSE</th><th class="n">cond(X)</th></tr></thead><tbody>
+${cache.map(c=>`<tr class="${c===b?'best':''}"><td>${c.M.id} · ${c.M.name}${c===b?' ★':''}</td><td class="n">${c.p}</td><td class="n">${f(c.l2,3)}</td><td class="n">${f(c.l1,2)}</td><td class="n">${f(c.linf,2)}</td><td class="n">${f(c.rmse,3)}</td><td class="n">${f(c.R2,4)}</td><td class="n">${f(c.adj,4)}</td><td class="n">${f(c.looRmse,3)}</td><td class="n">${num(c.cond,1)}</td></tr>`).join('')}</tbody></table></div>
+<p class="note" style="margin-top:8px">★ lowest leave-one-out RMSE. LOO uses the hat-matrix identity eᵢ/(1 − hᵢᵢ), so no model is refitted 20 times.</p></section>
+<div class="grid"><section class="panel"><h2>Error by model</h2>${bars(cache)}</section>
+<section class="panel"><h2>Interpretation</h2>
+<p><b>${b.M.id} (${b.M.name})</b> predicts unseen houses best, with a leave-one-out RMSE of ${f(b.looRmse,2)} lakh.</p>
+<p>The models are nested (M1 ⊂ M2 ⊂ M3 ⊂ M4), so each larger column space contains the smaller one. Projection onto a larger space can only shrink the residual, which is why ‖r‖₂ ${cache.every((c,i)=>!i||c.l2<=cache[i-1].l2+1e-9)?'never rises':'is expected to fall'} from M1 to M4.</p>
+${overfit.length?`<p>${overfit.map(c=>c.M.id).join(', ')} lower${overfit.length>1?'':'s'} the training RMSE but raise${overfit.length>1?'':'s'} the leave-one-out RMSE (${overfit.map(c=>f(c.looRmse,2)).join(', ')}) and the condition number (${overfit.map(c=>num(c.cond,0)).join(', ')}). That is overfitting: the extra column mostly fits noise, and the columns become nearly dependent.</p>`:'<p>No larger model improves training error while hurting leave-one-out error on the current data.</p>'}
+<p class="note">Adjusted R² and LOO RMSE agree on the ranking when the penalty for extra columns is doing its job.</p></section></div>`};
+
+V.method=()=>`
+<div><h1>Methodology</h1><p class="lead">Every routine is written from first principles in plain JavaScript. NumPy was used only outside the page to check the output.</p></div>
+<section class="panel"><h2>Concepts used</h2><ul style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+<li><b>Matrices and vectors.</b> F, X and y hold the data. Products Xᵀ X and Xᵀ y are matrix products.</li>
+<li><b>Linear systems.</b> The normal equations XᵀXβ = Xᵀy are a square system, solved by Gauss-Jordan elimination with partial pivoting.</li>
+<li><b>Least-squares approximation.</b> β minimises ‖y − Xβ‖₂².</li>
+<li><b>Projection.</b> ŷ = Hy with H = X(XᵀX)⁻¹Xᵀ. H is symmetric and idempotent, and r = (I − H)y is orthogonal to the columns of X.</li>
+<li><b>Norms.</b> ‖·‖₁, ‖·‖₂ and ‖·‖∞ measure the residual. The 2-norm is the quantity being minimised.</li></ul></section>
+<section class="panel"><h2>Routines</h2><div class="scroll"><table><thead><tr><th>Routine</th><th>Purpose</th></tr></thead><tbody>
+<tr><td class="mono">gaussJordan(A, B)</td><td>Solves AX = B with partial pivoting; also gives (XᵀX)⁻¹</td></tr>
+<tr><td class="mono">qrSolve(X, y)</td><td>Modified Gram-Schmidt QR, then back substitution on Rβ = Qᵀy</td></tr>
+<tr><td class="mono">jacobiEig(S)</td><td>Eigenvalues of XᵀX; cond(X) = √(λmax / λmin)</td></tr>
+<tr><td class="mono">analyze(model)</td><td>Builds X, solves for β, then computes ŷ, r, H, norms, R² and leave-one-out error</td></tr></tbody></table></div></section>
+<section class="panel"><h2>Limits</h2><ul style="margin:0;padding-left:20px"><li>The 20 houses are illustrative values, not market data.</li><li>Leave-one-out error with 20 houses is itself noisy.</li><li>Price is assumed linear in the features. Location effects beyond distance are not modelled.</li></ul></section>`;
+
+/* ---------- shell ---------- */
+const main=document.getElementById('main'),nav=document.getElementById('nav');
+function route(){const h=(location.hash||'#overview').slice(1);return TABS.some(t=>t[0]===h)?h:'overview'}
+function drawNav(){nav.innerHTML=TABS.map(([id,l])=>`<a href="#${id}" ${id===route()?'aria-current="page"':''}>${l}</a>`).join('')}
+function render(){
+  drawNav();const id=route();
+  if(error&&id!=='data'){main.innerHTML=`<div class="err" role="alert">${error} Fix the values in the <a href="#data" style="color:inherit">data table</a>.</div>`;return}
+  main.innerHTML=V[id]();
+  if(id==='data')dataExtras();
+  if(id==='predict')newPred();
+}
+function dataExtras(){
+  const el=document.getElementById('datastats');
+  if(error){el.innerHTML=`<span class="tag warn">${error}</span>`;document.getElementById('datachart').innerHTML='';document.getElementById('Fprev').innerHTML='';return}
+  const m1=cache[0],a=data.map(h=>h[0]);
+  el.innerHTML=`n = ${data.length} houses · mean price ${f(data.reduce((s,h)=>s+h[4],0)/data.length,1)} lakh`;
+  const xs=a,lo=Math.min(...xs),hi=Math.max(...xs);
+  document.getElementById('datachart').innerHTML=scatter(data.map(h=>[h[0],h[4]]),'Area (sq ft)','Price (₹ lakh)',{line:[[lo,m1.beta[0]+m1.beta[1]*lo/100],[hi,m1.beta[0]+m1.beta[1]*hi/100]],label:'Price against area with the M1 line'})+`<p class="note">Line: M1 fit, price ≈ ${eqn(m1)}</p>`;
+  document.getElementById('Fprev').innerHTML=matHTML(data.slice(0,5).map(feat),2,['area/100','bedrooms','age','distance'])+`<div style="height:8px"></div>`+matHTML(data.slice(0,5).map(h=>[h[4]]),2,['y'])
+}
+function newPred(){
+  const el=document.getElementById('newpred');if(!el||!cache)return;
+  const v=[0,1,2,3].map(i=>parseFloat(document.getElementById('nh'+i).value));
+  if(v.some(x=>!isFinite(x))){el.innerHTML='<p class="note">Enter all four values.</p>';return}
+  const fe=feat([...v,0]);
+  el.innerHTML=`<div class="scroll"><table><tbody>${cache.map(c=>`<tr class="${c.M.id===sel?'best':''}"><td>${c.M.id}</td><td class="n">${f(dot(c.M.row(...fe),c.beta),2)} lakh</td></tr>`).join('')}</tbody></table></div><p class="note" style="margin-top:6px">Predicted price from each model. Prefer ${best().M.id}.</p>`;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-m]');if(b){sel=b.dataset.m;render();return}
+  if(e.target.id==='reset'){data=INIT.map(r=>r.slice());compute();render()}
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.i!==undefined){const v=parseFloat(t.value);if(isFinite(v)&&v>=0){data[+t.dataset.i][+t.dataset.k]=v;compute();dataExtras()}}
+  else if(t.id&&t.id.startsWith('nh'))newPred();
+});
+addEventListener('hashchange',()=>{render();scrollTo(0,0)});
+compute();render();
+</script>
+
+</body></html>
